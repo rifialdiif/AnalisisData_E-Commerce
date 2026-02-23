@@ -1,13 +1,13 @@
 # Proyek Analisis Data: E-Commerce Public Dataset 📊
 
-Welcome to the **E-Commerce Data Analysis** project repository! This project is the final assessment for the Data Analysis course, where I perform an end-to-end analysis on the Olist E-Commerce Public Dataset.
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://public-e-commerce-rifialdiif.streamlit.app/)
+
+Welcome to the **E-Commerce Data Analysis** project repository! This project is the final assessment for the **Belajar Fundamental Analisis Data** course at **Dicoding**, as part of the **IDCamp 2025** program (Data Scientist track). The goal is to perform an end-to-end analysis on the Olist E-Commerce Public Dataset.
 
 ---
 
 ## 👤 Author Information
-- **Name:** Rifialdi Faturrochman
-- **Identity:** Fresh Graduate in Software Engineering
-- **Personal Branding:** **RF Dashboard** 🚀
+- **Name:** Rifialdi Faturrochman 
 
 ---
 
@@ -62,6 +62,7 @@ This project focuses on analyzing the **Olist E-Commerce Public Dataset**, which
 ├── data/                  # Directory containing raw CSV files
 ├── notebook.ipynb         # Jupyter Notebook for EDA & Wrangling
 ├── requirements.txt       # Dependencies list
+├── url.txt                # Link to the live dashboard
 └── README.md              # Project documentation
 ```
 
@@ -87,7 +88,7 @@ streamlit run dashboard/dashboard.py
 
 ---
 
-## 🎯 Conclusion
+## Conclusion
 To maximize growth, the business should focus on scaling the **Health & Beauty** segment while aggressively implementing retention campaigns for **At Risk** customers. Improving logistics in regions outside São Paulo by mirroring the SP hub's efficiency could further boost customer satisfaction.
 
 ---
