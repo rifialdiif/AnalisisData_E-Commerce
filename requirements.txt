@@ -1,6 +1,7 @@
-pandas
-matplotlib
-seaborn
-streamlit
-babel
-plotly
+pandas>=2.2.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+streamlit>=1.40.0
+babel>=2.14.0
+plotly>=5.20.0
+altair<5.0.0

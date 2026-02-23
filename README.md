@@ -92,4 +92,4 @@ To maximize growth, the business should focus on scaling the **Health & Beauty**
 
 ---
 
-*Developed with ❤️ by Rifialdi Faturrochman | RF Dashboard*
+*Developed with ❤️ by Rifialdi Faturrochman *
