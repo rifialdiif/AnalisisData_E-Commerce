@@ -3,9 +3,18 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
 import plotly.express as px
+import os
 
 # Konfigurasi halaman
 st.set_page_config(page_title="E-Commerce Data Analysis", layout="wide")
+
+# --- DINAMIS PATH UNTUK DEPLOYMENT ---
+# Mendapatkan direktori tempat file dashboard.py ini berada
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Mendefinisikan path lengkap menuju file CSV
+main_data_path = os.path.join(current_dir, "main_data.csv")
+geo_data_path = os.path.join(current_dir, "geolocation_dataset.csv")
 
 # --- HELPER FUNCTIONS ---
 
@@ -38,25 +47,26 @@ def create_rfm_df(df):
     return rfm_df
 
 def create_geospatial_df(df, geolocation_df):
-    # Mengambil koordinat rata-rata per zip code agar performa plot tetap ringan
     geo_df = geolocation_df.groupby('geolocation_zip_code_prefix').agg({
         'geolocation_lat': 'mean',
         'geolocation_lng': 'mean'
     }).reset_index()
     
-    # Menggabungkan data pesanan dengan koordinat lokasi
     merged_geo = df.merge(geo_df, left_on='customer_zip_code_prefix', right_on='geolocation_zip_code_prefix', how='left')
     return merged_geo
 
 # --- LOAD DATA ---
-all_df = pd.read_csv("main_data.csv")
-all_df["order_purchase_timestamp"] = pd.to_datetime(all_df["order_purchase_timestamp"])
-
-# Load data geolocation (Pastikan file ini tersedia dari hasil cleaning sebelumnya)
 try:
-    geo_data = pd.read_csv("geolocation_dataset.csv")
+    all_df = pd.read_csv(main_data_path)
+    all_df["order_purchase_timestamp"] = pd.to_datetime(all_df["order_purchase_timestamp"])
 except FileNotFoundError:
-    st.error("File 'geolocation_dataset.csv' tidak ditemukan. Pastikan file tersedia untuk visualisasi peta.")
+    st.error(f"Berkas 'main_data.csv' tidak ditemukan di {main_data_path}. Pastikan berkas sudah di-upload ke GitHub.")
+    st.stop()
+
+try:
+    geo_data = pd.read_csv(geo_data_path)
+except FileNotFoundError:
+    st.warning(f"Berkas 'geolocation_dataset.csv' tidak ditemukan di {geo_data_path}. Peta tidak akan ditampilkan.")
     geo_data = pd.DataFrame()
 
 # --- SIDEBAR ---
@@ -64,7 +74,6 @@ with st.sidebar:
     st.title("E-Commerce Dashboard")
     st.image("https://github.com/rifialdiif/AnalisisData_E-Commerce/blob/main/dashboard/logo.png?raw=true")
     
-    # Filter Rentang Waktu
     min_date = all_df["order_purchase_timestamp"].min()
     max_date = all_df["order_purchase_timestamp"].max()
     
@@ -87,63 +96,52 @@ main_df = all_df[(all_df["order_purchase_timestamp"] >= str(start_date)) &
 st.title("Public E-Commerce Data Analysis Dashboard")
 st.markdown("---")
 
-# --- PERTANYAAN 1: PRODUK ---
-# --- UPDATE KODE DI PERTANYAAN 1 ---
+# --- 1. PRODUCT PERFORMANCE ---
 st.header("1. Product Performance Analysis")
-
-# Agregasi & Shortening
 product_perf = main_df.groupby("product_category_name_english").agg({
     "price": "sum",
     "review_score": "mean"
 }).sort_values(by="price", ascending=False).head(5).reset_index()
 
-# Menyingkat nama secara otomatis (opsional: ganti underscore jadi spasi)
+# Merapikan nama kategori agar tidak bertabrakan
 product_perf["product_category_name_english"] = product_perf["product_category_name_english"].str.replace("_", " ").str.title()
 
 fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(20, 8))
 
-# Grafik 1: Revenue
 sns.barplot(x="price", y="product_category_name_english", data=product_perf, palette="Blues_r", ax=ax[0])
 ax[0].set_title("Top 5 Categories by Revenue", fontsize=20)
 ax[0].set_ylabel(None)
-ax[0].tick_params(axis='y', labelsize=14) # Mengecilkan ukuran font label y
+ax[0].set_xlabel("Total Revenue (BRL)")
+ax[0].tick_params(axis='y', labelsize=14)
 
-# Grafik 2: Review
 sns.barplot(x="review_score", y="product_category_name_english", data=product_perf, palette="Greens_r", ax=ax[1])
 ax[1].set_title("Avg Review Score", fontsize=20)
 ax[1].set_ylabel(None)
+ax[1].set_xlabel("Review Score (0-5)")
 ax[1].set_xlim(0, 5)
 ax[1].tick_params(axis='y', labelsize=14)
 
-plt.tight_layout() # Mencegah grafik dan label saling tumpang tindih
+plt.tight_layout()
 st.pyplot(fig)
 st.info("Insight: Kategori Health & Beauty mendominasi pendapatan dengan tingkat kepuasan yang tinggi.")
 
-# --- PERTANYAAN 2: GEOGRAFIS & LOGISTIK ---
+# --- 2. GEOGRAPHICS & LOGISTICS ---
 st.header("2. Geographics & Logistics Performance")
 col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("Top States by Customer Count")
-    
-    # 1. Agregasi dan langsung rename kolom agar informatif
     state_df = main_df.groupby("customer_state").customer_id.nunique().sort_values(ascending=False).head(10).reset_index()
-    state_df.columns = ['customer_state', 'total_customers'] # Mengubah 'customer_id' menjadi 'total_customers'
+    state_df.columns = ['customer_state', 'total_customers']
     
     fig, ax = plt.subplots(figsize=(10, 8))
-    
-    # 2. Gunakan nama kolom baru yang sudah di-rename
     sns.barplot(x="total_customers", y="customer_state", data=state_df, palette="viridis", ax=ax)
-    
-    # 3. Berikan label sumbu yang jelas dalam bahasa yang mudah dipahami
     ax.set_xlabel("Number of Unique Customers")
     ax.set_ylabel(None)
-    
     st.pyplot(fig)
 
 with col2:
     st.subheader("Actual vs Estimated Delivery (Days)")
-    # Menghitung durasi pengiriman
     main_df_copy = main_df.copy()
     main_df_copy['delivery_time'] = (pd.to_datetime(main_df_copy['order_delivered_customer_date']) - main_df_copy['order_purchase_timestamp']).dt.days
     main_df_copy['estimated_time'] = (pd.to_datetime(main_df_copy['order_estimated_delivery_date']) - main_df_copy['order_purchase_timestamp']).dt.days
@@ -152,31 +150,27 @@ with col2:
     fig, ax = plt.subplots(figsize=(10, 8))
     logistics_melted = logistics_df.melt(id_vars='customer_state', var_name='Type', value_name='Days')
     sns.barplot(x="Days", y="customer_state", hue="Type", data=logistics_melted, palette="coolwarm")
+    ax.set_ylabel(None)
     st.pyplot(fig)
-st.info("Insight: Pengiriman di SP paling efisien, dan secara umum pesanan sampai lebih cepat dari estimasi.")
+st.info("Insight: Pengiriman di São Paulo (SP) terbukti paling efisien dibandingkan wilayah lainnya.")
 
-# --- ANALISIS GEOSPASIAL (MAP) ---
+# --- 3. GEOSPATIAL MAP ---
 st.header("3. Geospatial Distribution Analysis")
 if not geo_data.empty:
     geo_map_df = create_geospatial_df(main_df, geo_data)
-    
     fig = px.scatter_mapbox(
         geo_map_df, 
-        lat="geolocation_lat", 
-        lon="geolocation_lng", 
-        color="customer_state",
-        size_max=15, 
-        zoom=3, 
-        mapbox_style="carto-positron",
-        title="Sebaran Lokasi Pelanggan di Brasil",
+        lat="geolocation_lat", lon="geolocation_lng", 
+        color="customer_state", size_max=15, zoom=3, 
+        mapbox_style="carto-positron", title="Customer Distribution in Brazil",
         template="plotly_white"
     )
     fig.update_layout(margin={"r":0,"t":40,"l":0,"b":0})
     st.plotly_chart(fig, use_container_width=True)
 else:
-    st.warning("Data geospasial tidak dapat ditampilkan.")
+    st.warning("Data geospasial tidak dapat ditampilkan karena berkas tidak ditemukan.")
 
-# --- ANALISIS LANJUTAN: RFM ---
+# --- 4. RFM ANALYSIS ---
 st.header("4. Advanced Analysis: RFM Segmentation")
 rfm_df = create_rfm_df(main_df)
 
@@ -191,9 +185,9 @@ segment_counts = rfm_df['customer_segment'].value_counts().sort_values(ascending
 segment_counts.plot(kind='barh', color="#72BCD4")
 plt.xlabel("Number of Customers")
 st.pyplot(fig)
-st.info("Insight: Segmen At Risk merupakan kelompok terbesar, menandakan perlunya strategi reaktivasi.")
+st.info("Insight: Segmen At Risk / Hibernating merupakan kelompok terbesar, memerlukan strategi reaktivasi segera.")
 
-# --- FINANCIAL & SATISFACTION OVERVIEW ---
+# --- 5. FINANCIAL & SATISFACTION ---
 st.header("5. Financial & Satisfaction Overview")
 col1, col2 = st.columns(2)
 
@@ -215,4 +209,4 @@ with col2:
     plt.ylabel("Total Reviews")
     st.pyplot(fig)
 
-st.caption(f'Copyright (c) {all_df["customer_unique_id"].iloc[0][:0]} Rifialdi Faturrochman 2026')
+st.caption('Copyright (c) Rifialdi Faturrochman 2026')
